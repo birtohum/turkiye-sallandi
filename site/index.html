@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Türkiye bugün kaç kez sallandı?</title>
+<meta name="description" content="Türkiye'de bugün, bu hafta ve bu yıl kaydedilen depremler; il il harita, zaman çizelgesi ve 1990'dan bu yana büyük depremler. EMSC ve USGS verisi, birkaç saatte bir güncellenir. Tahmin yapmaz.">
+<meta property="og:title" content="Türkiye bugün kaç kez sallandı?">
+<meta property="og:description" content="Sismografların bugün Türkiye'de kaydettiği depremler, il il. Çoğunu kimse hissetmez; site tahmin yapmaz.">
+<meta name="theme-color" content="#f4efe4">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M2 16h8l3-9 4 18 3-12 2 3h8' fill='none' stroke='%23b4532a' stroke-width='3' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700&family=Fraunces:opsz,wght@9..144,500..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="stil.css">
+</head>
+<body>
+
+<header class="ust">
+  <p class="ust-etiket">Sismograf defteri · <span id="guncelleme">yükleniyor…</span></p>
+  <h1>Türkiye bugün <span class="buyuk-sayi" id="bugun-sayi">…</span> kez sallandı.</h1>
+  <p class="ust-alt" id="bugun-alt">&nbsp;</p>
+
+  <div class="sismo-kutu">
+    <svg id="sismo" role="img" aria-label="Bugünkü depremlerin saat saat çizgisi"></svg>
+    <div class="sismo-eksen"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
+  </div>
+
+  <div class="dinle">
+    <button id="dinle-dugme" class="dugme-ana" type="button" aria-pressed="false">
+      <span class="dugme-ikon" aria-hidden="true">▶</span> <span id="dinle-yazi">Son 7 günü dinle</span>
+    </button>
+    <p class="dinle-not">Ses kapalı başlar. Her deprem bir “tık” sesi: <b>büyük deprem = daha kalın ve daha yüksek ses</b>.
+      7 gün yaklaşık 20 saniyeye sıkıştırılır.</p>
+  </div>
+
+  <div class="sayaclar">
+    <div class="sayac"><span class="sayac-etiket">Bugün</span><span class="sayac-sayi" id="s-bugun">…</span><span class="sayac-not" id="s-bugun-not"></span></div>
+    <div class="sayac"><span class="sayac-etiket">Son 7 gün</span><span class="sayac-sayi" id="s-hafta">…</span><span class="sayac-not" id="s-hafta-not"></span></div>
+    <div class="sayac"><span class="sayac-etiket" id="s-yil-etiket">Bu yıl</span><span class="sayac-sayi" id="s-yil">…</span><span class="sayac-not" id="s-yil-not"></span></div>
+  </div>
+</header>
+
+<main>
+
+<section class="bolum" id="harita-bolum">
+  <h2>Nerede?</h2>
+  <p class="aciklama">Her nokta bir deprem. Nokta ne kadar büyükse deprem o kadar büyük. Bir ile dokunursan aşağıda o ilin özeti açılır.</p>
+  <div class="secici" role="group" aria-label="Zaman aralığı">
+    <button type="button" data-aralik="1">Son 24 saat</button>
+    <button type="button" data-aralik="7" class="secili">Son 7 gün</button>
+    <button type="button" data-aralik="30">Son 30 gün</button>
+  </div>
+  <div class="harita-kutu">
+    <svg id="harita" role="img" aria-label="Türkiye il haritası ve depremler"></svg>
+    <div class="harita-ipucu" id="ipucu" hidden></div>
+  </div>
+  <div class="lejant" id="lejant" aria-hidden="true"></div>
+  <button id="harita-durdur" class="dugme-ana dugme-kucuk" type="button" hidden>■ Sesi durdur</button>
+  <p class="kucuk" id="harita-not"></p>
+</section>
+
+<section class="bolum" id="il-bolum">
+  <h2>Senin ilin</h2>
+  <label class="il-sec">İlini seç:
+    <select id="il-secim"></select>
+  </label>
+  <div id="il-kart" class="il-kart"></div>
+</section>
+
+<section class="bolum">
+  <h2>Son bir yıl, gün gün</h2>
+  <p class="aciklama">Her çubuk bir gün. Açık renk tüm depremler, koyu renk 3 ve üzeri olanlar. Ani tepeler genelde büyük bir depremin ardından gelen artçılardır.</p>
+  <svg id="cizelge" role="img" aria-label="Son 365 günün günlük deprem sayıları"></svg>
+  <p class="kucuk" id="cizelge-not"></p>
+</section>
+
+<section class="bolum">
+  <h2>Küçükler çok, büyükler az</h2>
+  <p class="aciklama" id="merdiven-aciklama"></p>
+  <div id="merdiven" class="merdiven"></div>
+  <div class="bilgi-kutu">
+    <p><b>Büyüklük ölçeği logaritmiktir.</b> 5 büyüklüğündeki bir deprem, 4'lükten “biraz” büyük değildir:
+      yer hareketi yaklaşık 10 kat, açığa çıkan enerji yaklaşık <b>32 kat</b> fazladır.
+      6'lık bir deprem 4'lükten yaklaşık <b>1000 kat</b> fazla enerji açığa çıkarır.</p>
+  </div>
+</section>
+
+<section class="bolum" id="gecmis">
+  <h2>1990'dan bu yana</h2>
+  <p class="aciklama">Burada yalnızca <b>4 ve üzeri</b> depremler var (USGS kataloğu). Küçük depremlerin kaydı yıllar içinde çok değiştiği için uzun dönem karşılaştırmasında onları kullanmıyoruz.</p>
+  <div class="secici" role="group" aria-label="Gösterim">
+    <button type="button" data-gecmis="sayi" class="secili">Kaç deprem?</button>
+    <button type="button" data-gecmis="enerji">Ne kadar enerji?</button>
+  </div>
+  <svg id="yillar" role="img" aria-label="1990'dan bu yana yıllık deprem sayısı veya enerjisi"></svg>
+  <p class="aciklama" id="yillar-not"></p>
+  <h3>6 ve üzeri depremler</h3>
+  <p class="kucuk">Bu listedeki depremlerin bazılarında çok sayıda insan hayatını kaybetti. Rakamlar onları anlatmaya yetmez; bu bölüm yalnızca ne zaman ve nerede olduklarını hatırlatır.</p>
+  <ol id="buyukler" class="buyukler"></ol>
+</section>
+
+<section class="bolum not-bolum" id="yontem">
+  <h2>Bu site ne yapar, ne yapmaz?</h2>
+  <ul class="notlar">
+    <li><b>Tahmin yapmaz.</b> Deprem sayısının bir gün artması ya da azalması büyük bir depremin yaklaştığı anlamına gelmez. Bugünkü bilimle depremin yeri, zamanı ve büyüklüğü birlikte önceden söylenemez.</li>
+    <li><b>Çoğu deprem hissedilmez.</b> 2'den küçük depremleri genelde yalnızca cihazlar kaydeder. 3 civarı depremleri merkeze yakın olanlar hissedebilir.</li>
+    <li><b>“Sallandı” sayısı, kaydedilen deprem sayısıdır.</b> Bugünlük ve bu yıllık sayılar Avrupa-Akdeniz Sismoloji Merkezi'nin (EMSC) kataloğundan gelir. EMSC, Türkiye için AFAD ve Kandilli dahil birçok ağın verisini birleştirir. Bu yüzden sayılar AFAD'ın ya da Kandilli'nin kendi listesiyle birebir aynı olmaz; aynı deprem farklı büyüklükle de verilebilir.</li>
+    <li><b>Kayıt yıllar içinde iyileşti.</b> İstasyon sayısı arttıkça daha küçük depremler yakalanır. Bu yüzden “eskiden daha az deprem oluyordu” sonucu çıkarılamaz; uzun dönem bölümünde yalnızca 4 ve üzerini gösteriyoruz.</li>
+    <li><b>İl ataması yaklaşıktır.</b> Merkez üssü il sınırının içindeyse o il sayılır. Denizdeki depremler, kıyıya 30 km'den yakınsa en yakın ilin “açıkları” sayılır. Kurumlar merkez üssünü birkaç km farklı verebildiği için sınıra yakın depremler başka bir ile düşebilir.</li>
+    <li><b>Güncelleme:</b> veri birkaç saatte bir çekilir; sayfadaki “son güncelleme” saati ona göre. Resmî bilgi ve uyarılar için <a href="https://deprem.afad.gov.tr/" rel="noopener">AFAD</a> ve <a href="http://www.koeri.boun.edu.tr/scripts/lst0.asp" rel="noopener">Kandilli Rasathanesi</a>'ni takip edin.</li>
+  </ul>
+  <p class="kucuk">Kaynaklar: <a href="https://www.seismicportal.eu/" rel="noopener">EMSC seismicportal</a> (son iki yıl, tüm büyüklükler),
+    <a href="https://earthquake.usgs.gov/fdsnws/event/1/" rel="noopener">USGS</a> (1990'dan bu yana, 4 ve üzeri),
+    il sınırları <a href="https://www.naturalearthdata.com/" rel="noopener">Natural Earth</a>.
+    Kod ve veri: <a href="https://github.com/birtohum/turkiye-sallandi" rel="noopener">github.com/birtohum/turkiye-sallandi</a> (Apache-2.0).</p>
+</section>
+
+</main>
+
+<footer class="alt">
+  <p>Deprem anında: <b>Çök, kapan, tutun.</b> Sonrasında resmî kurumların duyurularını takip edin.</p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="uygulama.js"></script>
+</body>
+</html>
