@@ -3,3 +3,4 @@ __pycache__/
 .pytest_cache/
 kaynak_ham/
 *.log
+site/og.png

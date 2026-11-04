@@ -7,6 +7,13 @@
 <meta name="description" content="Türkiye'de bugün, bu hafta ve bu yıl kaydedilen depremler; il il harita, zaman çizelgesi ve 1990'dan bu yana büyük depremler. EMSC ve USGS verisi, birkaç saatte bir güncellenir. Tahmin yapmaz.">
 <meta property="og:title" content="Türkiye bugün kaç kez sallandı?">
 <meta property="og:description" content="Sismografların bugün Türkiye'de kaydettiği depremler, il il. Çoğunu kimse hissetmez; site tahmin yapmaz.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://birtohum.github.io/turkiye-sallandi/">
+<meta property="og:image" content="https://birtohum.github.io/turkiye-sallandi/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Türkiye bugün kaç kez sallandı? Günün deprem sayısı ve sismograf çizgisi.">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#f4efe4">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M2 16h8l3-9 4 18 3-12 2 3h8' fill='none' stroke='%23b4532a' stroke-width='3' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,9 +27,11 @@
   <p class="ust-etiket">Sismograf defteri · <span id="guncelleme">yükleniyor…</span></p>
   <h1>Türkiye bugün <span class="buyuk-sayi" id="bugun-sayi">…</span> kez sallandı.</h1>
   <p class="ust-alt" id="bugun-alt">&nbsp;</p>
+  <p class="insan" id="insan" hidden></p>
 
   <div class="sismo-kutu">
     <svg id="sismo" role="img" aria-label="Bugünkü depremlerin saat saat çizgisi"></svg>
+    <div class="igne" id="igne" hidden aria-hidden="true"><span></span></div>
     <div class="sismo-eksen"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
   </div>
 
@@ -43,32 +52,39 @@
 
 <main>
 
-<section class="bolum" id="harita-bolum">
+<section class="bolum genis" id="harita-bolum">
+  <p class="bolum-no">01</p>
   <h2>Nerede?</h2>
-  <p class="aciklama">Her nokta bir deprem. Nokta ne kadar büyükse deprem o kadar büyük. Bir ile dokunursan aşağıda o ilin özeti açılır.</p>
+  <p class="aciklama">Her nokta bir deprem; nokta büyüdükçe deprem de büyük. Halkalanan noktalar son 24 saatin depremleri. Bir noktaya dokunursan ayrıntısı, bir ile dokunursan o ilin özeti açılır.</p>
   <div class="secici" role="group" aria-label="Zaman aralığı">
     <button type="button" data-aralik="1">Son 24 saat</button>
     <button type="button" data-aralik="7" class="secili">Son 7 gün</button>
     <button type="button" data-aralik="30">Son 30 gün</button>
   </div>
   <div class="harita-kutu">
-    <svg id="harita" role="img" aria-label="Türkiye il haritası ve depremler"></svg>
+    <div class="harita-kaydir" id="harita-kaydir"><svg id="harita" role="img" aria-label="Türkiye il haritası ve depremler"></svg></div>
     <div class="harita-ipucu" id="ipucu" hidden></div>
+    <div class="dep-kart" id="dep-kart" hidden role="dialog" aria-label="Deprem ayrıntısı"></div>
   </div>
+  <p class="kaydir-ipucu" aria-hidden="true">← Haritayı parmağınla kaydırabilirsin →</p>
   <div class="lejant" id="lejant" aria-hidden="true"></div>
   <button id="harita-durdur" class="dugme-ana dugme-kucuk" type="button" hidden>■ Sesi durdur</button>
   <p class="kucuk" id="harita-not"></p>
 </section>
 
 <section class="bolum" id="il-bolum">
+  <p class="bolum-no">02</p>
   <h2>Senin ilin</h2>
-  <label class="il-sec">İlini seç:
+  <p class="aciklama">Neredesin?</p>
+  <div class="cipler" id="il-cipler" role="group" aria-label="Büyük iller"></div>
+  <label class="il-sec">ya da listeden seç:
     <select id="il-secim"></select>
   </label>
   <div id="il-kart" class="il-kart"></div>
 </section>
 
 <section class="bolum">
+  <p class="bolum-no">03</p>
   <h2>Son bir yıl, gün gün</h2>
   <p class="aciklama">Her çubuk bir gün. Açık renk tüm depremler, koyu renk 3 ve üzeri olanlar. Ani tepeler genelde büyük bir depremin ardından gelen artçılardır.</p>
   <svg id="cizelge" role="img" aria-label="Son 365 günün günlük deprem sayıları"></svg>
@@ -76,6 +92,7 @@
 </section>
 
 <section class="bolum">
+  <p class="bolum-no">04</p>
   <h2>Küçükler çok, büyükler az</h2>
   <p class="aciklama" id="merdiven-aciklama"></p>
   <div id="merdiven" class="merdiven"></div>
@@ -87,6 +104,7 @@
 </section>
 
 <section class="bolum" id="gecmis">
+  <p class="bolum-no">05</p>
   <h2>1990'dan bu yana</h2>
   <p class="aciklama">Burada yalnızca <b>4 ve üzeri</b> depremler var (USGS kataloğu). Küçük depremlerin kaydı yıllar içinde çok değiştiği için uzun dönem karşılaştırmasında onları kullanmıyoruz.</p>
   <div class="secici" role="group" aria-label="Gösterim">
@@ -101,6 +119,7 @@
 </section>
 
 <section class="bolum not-bolum" id="yontem">
+  <p class="bolum-no">06</p>
   <h2>Bu site ne yapar, ne yapmaz?</h2>
   <ul class="notlar">
     <li><b>Tahmin yapmaz.</b> Deprem sayısının bir gün artması ya da azalması büyük bir depremin yaklaştığı anlamına gelmez. Bugünkü bilimle depremin yeri, zamanı ve büyüklüğü birlikte önceden söylenemez.</li>

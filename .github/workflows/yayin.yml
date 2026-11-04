@@ -29,6 +29,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Paylaşım görseli (og.png, depoya yazılmaz)
+        run: |
+          pip install -q pillow
+          python betikler/og.py
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

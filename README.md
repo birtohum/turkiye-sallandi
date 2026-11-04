@@ -88,6 +88,10 @@ python -m http.server 8823 --directory site
 `betikler/harita_hazirla.py` il sınırlarını Natural Earth dosyalarından bir kez üretir
 (ham dosyalar depoda değil; adresleri betiğin başında).
 
+Paylaşım görseli `site/og.png` (1200×630, günün sayısı ve sismograf çizgisi) yayın iş
+akışında `betikler/og.py` ile üretilir; her güncellemede değiştiği için depoya yazılmaz.
+Yazı tipleri Fraunces ve Figtree (SIL Open Font License, `betikler/yazitipi/`).
+
 ## Dosyalar
 
 | Yol | İçerik |

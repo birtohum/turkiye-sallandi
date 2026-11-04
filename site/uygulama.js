@@ -116,7 +116,7 @@
 
     // Veri gece yarısından önce çekildiyse "bugün" henüz boş olabilir: dürüstçe söyle
     const gunAyni = trGunBasi(g) === bugunBas;
-    $("bugun-sayi").textContent = sayi(bugun.length);
+    sayacAnim($("bugun-sayi"), bugun.length);
     const kucuk = bugun.filter((o) => o.m < 2).length;
     const en = bugun.reduce((a, o) => (!a || o.m > a.m ? o : a), null);
     let metin;
@@ -130,6 +130,18 @@
         `En büyüğü ${mag(en.m)}, ${yer(en)}, saat ${saatYaz(en.ms)}.`;
     }
     $("bugun-alt").textContent = metin;
+
+    // İnsan ölçeğinde tek satır: kaç dakikada bir, kaçı hissedilebilir
+    if (hafta.length) {
+      const dk = (7 * 24 * 60) / hafta.length;
+      const aralik = dk < 90 ? `${sayi(Math.max(1, Math.round(dk)))} dakikada bir` : `${sayi(Math.round(dk / 60))} saatte bir`;
+      const n3h = hafta.filter((x) => x.m >= 3).length;
+      const ins = $("insan");
+      ins.innerHTML = `Son 7 günde ortalama <b>${aralik}</b> deprem kaydedildi. ` + (n3h
+        ? `Bunların <b>${sayi(n3h)}</b> tanesi 3 ve üzeriydi; onları merkeze yakın olanlar hissetmiş olabilir. Gerisini büyük ihtimalle yalnızca cihazlar fark etti.`
+        : "Hiçbiri 3 ve üzeri değildi; büyük ihtimalle neredeyse hiçbirini kimse hissetmedi.");
+      ins.hidden = false;
+    }
 
     const o = VERI.ozet;
     const not = (liste) => {
@@ -146,6 +158,19 @@
     $("s-yil-not").textContent = `${sayi(y3)} tanesi 3 ve üzeri; geçen yıl aynı tarihe kadar ${sayi(o.gecen_yil_ayni_doneme_kadar)}`;
   }
 
+  const azHareket = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function sayacAnim(el, hedef) {
+    if (azHareket || hedef < 2) { el.textContent = sayi(hedef); return; }
+    const sure = 1300, t0 = performance.now();
+    const adim = (t) => {
+      const k = Math.min(1, Math.max(0, (t - t0) / sure));
+      el.textContent = sayi(Math.round(hedef * (1 - Math.pow(1 - k, 3))));
+      if (k < 1) requestAnimationFrame(adim);
+    };
+    requestAnimationFrame(adim);
+  }
+
   /* ---------- Sismograf şeridi (bugün, 24 saat) ---------- */
   function sismograf() {
     const svg = d3.select("#sismo");
@@ -155,12 +180,12 @@
     const olaylar = VERI.olaylar.filter((o) => o.ms >= bas && o.ms < bas + 864e5);
     const x = (ms) => ((ms - bas) / 864e5) * W;
     const tepe = olaylar.map((o) => ({ x0: x(o.ms), A: Math.min(1, Math.pow(Math.max(o.m, 0.3) / 5.5, 1.6)) * (orta - 6) }));
-    const adim = 1;
+    const pxAdim = 1;
     const noktalar = [];
     let tohum = 7;
     const gurultu = () => { tohum = (tohum * 9301 + 49297) % 233280; return tohum / 233280 - 0.5; };
     const sonX = Math.min(W, x(VERI.guncelleme));
-    for (let px = 0; px <= sonX; px += adim) {
+    for (let px = 0; px <= sonX; px += pxAdim) {
       let y = gurultu() * 1.4;
       for (const t of tepe) {
         const d = px - t.x0;
@@ -171,26 +196,50 @@
     svg.append("g").selectAll("line").data(d3.range(1, 24)).join("line")
       .attr("class", (h) => "sismo-izgara" + (h % 6 ? "" : " kalin"))
       .attr("x1", (h) => (h / 24) * W).attr("x2", (h) => (h / 24) * W).attr("y1", 0).attr("y2", H);
-    svg.append("path").attr("class", "sismo-cizgi").attr("d", d3.line()(noktalar));
+    // Çizgi soldan sağa "yazılır" (kesme dikdörtgeni büyür)
+    const kesme = svg.append("defs").append("clipPath").attr("id", "sismo-kesme")
+      .append("rect").attr("x", 0).attr("y", 0).attr("height", H).attr("width", azHareket ? W : 0);
+    svg.append("path").attr("class", "sismo-cizgi").attr("clip-path", "url(#sismo-kesme)").attr("d", d3.line()(noktalar));
     if (sonX < W) svg.append("line").attr("class", "sismo-simdi").attr("x1", sonX).attr("x2", sonX).attr("y1", 6).attr("y2", H - 6).attr("vector-effect", "non-scaling-stroke");
+    const igne = $("igne");
+    igne.style.left = (100 * sonX) / W + "%";
+    if (azHareket) { igne.hidden = false; return; }
+    const sure = 1500, t0 = performance.now();
+    const adim = (t) => {
+      const k = Math.min(1, Math.max(0, (t - t0) / sure));
+      kesme.attr("width", sonX * k + 2);
+      if (k < 1) requestAnimationFrame(adim); else igne.hidden = false;
+    };
+    requestAnimationFrame(adim);
   }
 
   /* ---------- Harita ---------- */
-  let proj, dotKatman, ilKatman, harW, harH;
+  let proj, dotKatman, dalgaKatman, etiketKatman, ilKatman, harW, harH;
   const yaricap = (m) => 1.3 + 0.55 * Math.pow(Math.max(m, 0), 1.6);
 
   function harita() {
-    harW = 880; harH = 430;
+    harW = 1000; harH = 470;
     const svg = d3.select("#harita").attr("viewBox", `0 0 ${harW} ${harH}`);
-    proj = d3.geoMercator().fitExtent([[6, 6], [harW - 6, harH - 6]],
-      { type: "MultiPoint", coordinates: [[25.6, 35.7], [44.9, 42.2]] });
+    proj = d3.geoMercator().fitExtent([[4, 4], [harW - 4, harH - 4]],
+      { type: "MultiPoint", coordinates: [[25.75, 35.85], [44.8, 42.1]] });
     const yol = d3.geoPath(proj);
     svg.append("g").selectAll("path").data(VERI.komsular.features).join("path").attr("class", "komsu").attr("d", yol);
     ilKatman = svg.append("g").selectAll("path").data(VERI.iller.features).join("path")
-      .attr("class", "il").attr("d", yol)
-      .on("click", (e, f) => ilSec(f.properties.plaka, true));
+      .attr("class", "il").attr("d", yol);
     ilKatman.append("title").text((f) => f.properties.ad);
+    dalgaKatman = svg.append("g").attr("aria-hidden", "true");
     dotKatman = svg.append("g");
+    etiketKatman = svg.append("g").attr("aria-hidden", "true");
+
+    // Dokunma/tıklama: yakında bir deprem varsa onun kartı, yoksa ilin özeti
+    svg.on("click", (e) => {
+      if (durum.caliniyor) return;
+      const o = enYakin(svg, e, 18);
+      if (o) { depKart(o); return; }
+      kartKapat();
+      const f = d3.select(e.target).datum();
+      if (f && f.properties && f.properties.plaka) ilSec(f.properties.plaka, true);
+    });
 
     document.querySelectorAll("[data-aralik]").forEach((b) => b.addEventListener("click", () => {
       document.querySelectorAll("[data-aralik]").forEach((x) => x.classList.toggle("secili", x === b));
@@ -199,17 +248,14 @@
     }));
     noktalariCiz();
     lejant();
+    const kaydir = $("harita-kaydir");
+    if (kaydir.scrollWidth > kaydir.clientWidth) kaydir.scrollLeft = (kaydir.scrollWidth - kaydir.clientWidth) / 2;
 
     // En yakın depremin ipucu (fare/dokunma)
     const ipucu = $("ipucu");
     svg.on("mousemove", (e) => {
-      if (!VERI.gorunen || durum.caliniyor) return;
-      const [mx, my] = d3.pointer(e);
-      let en = null, enD = 14;
-      for (const o of VERI.gorunen) {
-        const d = Math.hypot(o.px - mx, o.py - my);
-        if (d < Math.max(enD, yaricap(o.m) + 2)) { enD = d; en = o; }
-      }
+      if (!VERI.gorunen || durum.caliniyor || !$("dep-kart").hidden) return;
+      const en = enYakin(svg, e, 12);
       if (!en) { ipucu.hidden = true; return; }
       ipucu.hidden = false;
       ipucu.textContent = `${mag(en.m)} · ${yer(en)} · ${tarihYaz(en.ms)} ${saatYaz(en.ms)}` + (en.derinlik != null ? ` · ${en.derinlik} km derinlik` : "");
@@ -218,6 +264,51 @@
       ipucu.style.left = Math.min(en.px * olcek + 12, kutu.width - 230) + "px";
       ipucu.style.top = Math.max(en.py * olcek - 40, 4) + "px";
     }).on("mouseleave", () => (ipucu.hidden = true));
+  }
+
+  // Ekranda `px` pikselden yakın en yakın deprem
+  function enYakin(svg, e, px) {
+    if (!VERI.gorunen) return null;
+    const [mx, my] = d3.pointer(e, svg.node());
+    const olcek = svg.node().getBoundingClientRect().width / harW;
+    let en = null, enD = Infinity;
+    for (const o of VERI.gorunen) {
+      const d = Math.hypot(o.px - mx, o.py - my) * olcek;
+      const r = yaricap(o.m) * olcek;
+      // Noktanın kenarına uzaklık: büyük nokta, üstündeki küçük noktalara yenilmesin
+      const kenar = Math.max(0, d - r);
+      if (d <= Math.max(px, r + 4) && kenar <= enD) { enD = kenar; en = o; }
+    }
+    return en;
+  }
+
+  function onceYaz(ms) {
+    const dk = Math.round((VERI.guncelleme - ms) / 60000);
+    if (dk < 60) return `${sayi(Math.max(dk, 1))} dakika önce`;
+    if (dk < 48 * 60) return `${sayi(Math.round(dk / 60))} saat önce`;
+    return `${sayi(Math.round(dk / 1440))} gün önce`;
+  }
+
+  function depKart(o) {
+    const k = $("dep-kart");
+    $("ipucu").hidden = true;
+    const hiss = o.m >= 4 ? "Çevredeki birçok yerleşimde hissedilmiş olabilir." : o.m >= 3 ? "Merkeze yakın olanlar hissetmiş olabilir." : "Büyük ihtimalle yalnızca cihazlar kaydetti.";
+    k.innerHTML = `
+      <button type="button" class="kart-kapat" aria-label="Kapat">×</button>
+      <div class="kart-ust"><span class="kart-mag">${mag(o.m)}</span>
+        <span><b>${yer(o)}</b><br>${tarihYaz(o.ms, true)}, saat ${saatYaz(o.ms)} · ${onceYaz(o.ms)}</span></div>
+      <p>${o.derinlik != null ? `${sayi(o.derinlik)} km derinlikte. ` : ""}${hiss}</p>
+      <button type="button" class="kart-il">${VERI.ilAd[o.plaka]} özetine git →</button>`;
+    k.hidden = false;
+    k.onclick = (e) => e.stopPropagation();
+    k.querySelector(".kart-kapat").onclick = () => kartKapat();
+    k.querySelector(".kart-il").onclick = () => { kartKapat(); ilSec(o.plaka, true); };
+    dotKatman.selectAll("circle").classed("secili-dep", (x) => x === o);
+  }
+
+  function kartKapat() {
+    $("dep-kart").hidden = true;
+    if (dotKatman) dotKatman.selectAll("circle").classed("secili-dep", false);
   }
 
   function noktalariCiz(liste) {
@@ -229,10 +320,34 @@
     dotKatman.selectAll("circle").data(sirali, (o) => o.t + "_" + o.enlem).join("circle")
       .attr("class", (o) => "dep" + (bitis - o.ms < 864e5 ? " yeni" : ""))
       .attr("cx", (o) => o.px).attr("cy", (o) => o.py).attr("r", (o) => yaricap(o.m));
+    dalgaKatman.selectAll("circle").remove();
+    etiketKatman.selectAll("*").remove();
     if (!liste) {
+      kartKapat();
+      // Son 24 saatin en büyük 40 depremine yumuşak halka
+      const yeniler = sirali.filter((o) => bitis - o.ms < 864e5).slice(-40);
+      if (!azHareket) {
+        dalgaKatman.selectAll("circle").data(yeniler).join("circle").attr("class", "dalga")
+          .attr("cx", (o) => o.px).attr("cy", (o) => o.py).attr("r", (o) => yaricap(o.m) + 1)
+          .style("animation-delay", (o, i) => `${((i * 0.61) % 3).toFixed(2)}s`);
+      }
+      // Aralığın en büyüğüne etiket
+      const en = sirali[sirali.length - 1];
+      if (en) {
+        const sag = en.px > harW * 0.6;
+        const r = yaricap(en.m);
+        const tx = en.px + (sag ? -(r + 13) : r + 13);
+        etiketKatman.append("circle").attr("class", "en-halka").attr("cx", en.px).attr("cy", en.py).attr("r", r + 5);
+        const t = etiketKatman.append("text").attr("class", "en-etiket")
+          .attr("x", tx).attr("y", en.py - 2).attr("text-anchor", sag ? "end" : "start");
+        t.append("tspan").attr("class", "en-mag").text(`${mag(en.m)} `);
+        t.append("tspan").text(yer(en));
+        t.append("tspan").attr("x", tx).attr("dy", "1.25em").attr("class", "en-alt")
+          .text(`${tarihYaz(en.ms)} ${saatYaz(en.ms)} · bu aralığın en büyüğü`);
+      }
       const n3 = veri.filter((o) => o.m >= 3).length;
       const ad = { 1: "Son 24 saatte", 7: "Son 7 günde", 30: "Son 30 günde" }[durum.aralik];
-      $("harita-not").textContent = `${ad} ${sayi(veri.length)} deprem (${sayi(n3)} tanesi 3 ve üzeri). Koyu turuncu noktalar son 24 saat. Noktanın üstüne gelince ayrıntısı görünür.`;
+      $("harita-not").textContent = `${ad} ${sayi(veri.length)} deprem (${sayi(n3)} tanesi 3 ve üzeri). Koyu turuncu ve halkalı noktalar son 24 saat. Bir noktaya dokununca ayrıntısı açılır.`;
     }
   }
 
@@ -253,12 +368,21 @@
     try { kayitli = +localStorage.getItem("deprem-il"); } catch (e) { /* gizli pencere */ }
     sec.value = String(kayitli && VERI.ilAd[kayitli] ? kayitli : 34);
     sec.addEventListener("change", () => ilSec(+sec.value, false));
+    // Nüfusu en kalabalık 8 il (TÜİK ADNKS 2024)
+    $("il-cipler").innerHTML = [34, 6, 35, 16, 7, 42, 1, 63].map((p) =>
+      `<button type="button" data-il="${p}" aria-pressed="false">${VERI.ilAd[p]}</button>`).join("");
+    $("il-cipler").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => ilSec(+b.dataset.il, false)));
     ilSec(+sec.value, false, true);
   }
 
   function ilSec(plaka, haritadan, ilk) {
     durum.il = plaka;
     $("il-secim").value = String(plaka);
+    document.querySelectorAll("#il-cipler button").forEach((b) => {
+      const on = +b.dataset.il === plaka;
+      b.classList.toggle("secili", on);
+      b.setAttribute("aria-pressed", String(on));
+    });
     if (!ilk) { try { localStorage.setItem("deprem-il", String(plaka)); } catch (e) { /* yok say */ } }
     ilKatman.classed("secili-il", (f) => f.properties.plaka === plaka);
     ilKatman.filter((f) => f.properties.plaka === plaka).raise();
@@ -445,6 +569,7 @@
       osc.start(t); osc.stop(t + uzun + 0.05);
     });
     durum.caliniyor = { ctx, liste, t0, SURE, bas, bitis };
+    kartKapat();
     const dugme = $("dinle-dugme");
     dugme.setAttribute("aria-pressed", "true");
     dugme.querySelector(".dugme-ikon").textContent = "■";
